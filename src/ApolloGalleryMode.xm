@@ -601,6 +601,20 @@ didSelectItemAtIndexPath:(NSIndexPath *)ip {
  *   4. All native Apollo paths for Large/Compact are 100% untouched
  */
 
+// ---------------------------------------------------------------------------
+// MARK: – Class declarations for hooked VCs
+//
+// Logos emits @class forward declarations for hooked classes, but that means
+// %new methods can't call UIViewController methods like self.view without a
+// compiler error ("property cannot be found in forward class object").
+// Declaring them as UIViewController subclasses here fixes this.
+// ---------------------------------------------------------------------------
+
+@interface APHFeedViewController : UIViewController
+@end
+@interface APHSubredditViewController : UIViewController
+@end
+
 // Associated object keys
 static const char kGalleryGridVCKey    = 0;
 static const char kGalleryButtonKey    = 0;
