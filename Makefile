@@ -131,6 +131,7 @@ ApolloReborn_FILES = \
     $(SRC_DIR)/Defaults.m \
     $(SRC_DIR)/UIWindow+Apollo.m \
     $(SRC_DIR)/fishhook.c \
+	$(SRC_DIR)/ApolloGalleryMode.xm \
     $(SSZIPARCHIVE_FILES)
 ApolloReborn_FRAMEWORKS = UIKit Security AVFoundation AVKit OSLog NaturalLanguage ImageIO StoreKit Photos PhotosUI SafariServices SystemConfiguration WebKit AuthenticationServices CoreImage SwiftUI UniformTypeIdentifiers
 ApolloReborn_LIBRARIES = z iconv
