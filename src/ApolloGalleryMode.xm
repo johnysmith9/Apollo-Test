@@ -202,9 +202,9 @@ static NSCache<NSURL *, UIImage *> *gImageCache(void) {
     // Detect video for badge
     NSString *ext = item.mediaURL.pathExtension.lowercaseString;
     BOOL isVideo = [@[@"mp4",@"mov",@"m3u8"] containsObject:ext] ||
-                   [item.rawPost respondsToSelector:NSSelectorFromString(@"linkType")] &&
-                   [[[item.rawPost valueForKey:@"linkType"] lowercaseString]
-                    containsString:@"video"];
+                   ([item.rawPost respondsToSelector:NSSelectorFromString(@"linkType")] &&
+                    [[[item.rawPost valueForKey:@"linkType"] lowercaseString]
+                     containsString:@"video"]);
     self.videoOverlay.hidden = !isVideo;
 
     if (!item.thumbnailURL) return;
@@ -290,16 +290,17 @@ static NSCache<NSURL *, UIImage *> *gImageCache(void) {
         iv.image = cached;
     } else if (self.item.thumbnailURL) {
         __weak UIImageView *weakIV = iv;
-        [[NSURLSession sharedSession]
-            dataTaskWithURL:self.item.thumbnailURL
-          completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
-            if (!d) return;
-            UIImage *img = [UIImage imageWithData:d];
-            if (!img) return;
-            [gImageCache() setObject:img forKey:self.item.thumbnailURL];
-            dispatch_async(dispatch_get_main_queue(), ^{ weakIV.image = img; });
-        }].resume;  // fire and forget
-        // Note: [task resume] pattern; using .resume shorthand here
+        NSURLSessionDataTask *task =
+            [[NSURLSession sharedSession]
+                dataTaskWithURL:self.item.thumbnailURL
+              completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
+                if (!d) return;
+                UIImage *img = [UIImage imageWithData:d];
+                if (!img) return;
+                [gImageCache() setObject:img forKey:self.item.thumbnailURL];
+                dispatch_async(dispatch_get_main_queue(), ^{ weakIV.image = img; });
+            }];
+        [task resume];
     }
 
     // Title bar at bottom
@@ -649,14 +650,14 @@ static const char kNativeListViewKey   = 0;
 }
 
 %new
-- (nullable UISegmentedControl *)ar_findLayoutPicker {
+- (UISegmentedControl *)ar_findLayoutPicker {
     // Walk the view hierarchy looking for a UISegmentedControl with 2 segments
     // (Apollo's Large/Compact picker is the only one in the feed VC's view)
     return [self ar_searchForSegmentedControlIn:self.view];
 }
 
 %new
-- (nullable UISegmentedControl *)ar_searchForSegmentedControlIn:(UIView *)view {
+- (UISegmentedControl *)ar_searchForSegmentedControlIn:(UIView *)view {
     if ([view isKindOfClass:[UISegmentedControl class]]) {
         UISegmentedControl *sc = (UISegmentedControl *)view;
         if (sc.numberOfSegments == 2) return sc;
@@ -864,7 +865,7 @@ static const char kNativeListViewKey   = 0;
 }
 
 %new
-- (nullable UIView *)ar_findFeedListView {
+- (UIView *)ar_findFeedListView {
     // Apollo's feed is usually a UITableView or UICollectionView directly
     // in self.view or one level below
     for (UIView *sub in self.view.subviews) {
@@ -877,7 +878,7 @@ static const char kNativeListViewKey   = 0;
 }
 
 %new
-- (nullable UITableView *)ar_findFeedTableView {
+- (UITableView *)ar_findFeedTableView {
     UIView *v = [self ar_findFeedListView];
     return [v isKindOfClass:[UITableView class]] ? (UITableView *)v : nil;
 }
