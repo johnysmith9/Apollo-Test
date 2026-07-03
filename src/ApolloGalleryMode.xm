@@ -611,8 +611,25 @@ didSelectItemAtIndexPath:(NSIndexPath *)ip {
 // ---------------------------------------------------------------------------
 
 @interface APHFeedViewController : UIViewController
+- (void)ar_injectGalleryButton;
+- (UISegmentedControl *)ar_findLayoutPicker;
+- (UISegmentedControl *)ar_searchForSegmentedControlIn:(UIView *)view;
+- (void)ar_layoutPickerChanged:(UISegmentedControl *)picker;
+- (BOOL)ar_galleryModeIsOn;
+- (void)ar_setGalleryModeOn:(BOOL)on;
+- (void)ar_activateGallery;
+- (void)ar_deactivateGallery;
+- (void)ar_presentSwipeGalleryWithItems:(NSArray *)items startItem:(ARThumbnailItem *)startItem;
+- (void)ar_handleNativeOpenNotification:(NSNotification *)note;
+- (void)ar_openNativeViewerForPost:(id)post;
+- (UIView *)ar_findFeedListView;
+- (UITableView *)ar_findFeedTableView;
 @end
+
 @interface APHSubredditViewController : UIViewController
+- (void)ar_injectGalleryButton;
+- (BOOL)ar_galleryModeIsOn;
+- (void)ar_deactivateGallery;
 @end
 
 // Associated object keys
@@ -840,13 +857,11 @@ static const char kNativeListViewKey   = 0;
      * the table view which causes Apollo to handle it normally.
      */
     SEL openSel = NSSelectorFromString(@"openMediaViewerForLink:");
-    SEL coordSel = NSSelectorFromString(@"coordinator");
 
-    if ([self respondsToSelector:openSel]) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    if ([self respondsToSelector:openSel]) {
         [self performSelector:openSel withObject:post];
-#pragma clang diagnostic pop
         return;
     }
 
@@ -857,6 +872,7 @@ static const char kNativeListViewKey   = 0;
             return;
         }
     } @catch (...) {}
+#pragma clang diagnostic pop
 
     // Last resort: find the post's row in Apollo's table and simulate a tap
     @try {
