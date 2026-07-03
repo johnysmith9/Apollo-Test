@@ -33,11 +33,6 @@
 // MARK: – Shared preference key
 // ---------------------------------------------------------------------------
 
-static NSString *const kGalleryModeActiveKey   = @"ARGalleryModeActive";
-// Per-feed persistence: "ARGalleryMode_<subreddit>"
-static NSString *galleryModeKeyForFeed(NSString *feed) {
-    return [NSString stringWithFormat:@"ARGalleryMode_%@", feed ?: @"home"];
-}
 
 // ---------------------------------------------------------------------------
 // MARK: – ARThumbnailItem  (one cell's data)
