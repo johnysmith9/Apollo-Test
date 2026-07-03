@@ -1,0 +1,44 @@
+name: Build Tweak (.deb)
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/theos/theos-docker:latest
+      options: --user root
+
+    steps:
+      - name: Checkout (with LFS for liquid-glass Assets.car)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+
+      - name: Fetch LFS objects
+        run: git lfs pull
+
+      - name: Build rootless .deb
+        run: |
+          make package \
+            THEOS_PACKAGE_SCHEME=rootless \
+            FINALPACKAGE=1 \
+            -j$(nproc)
+
+      - name: Locate .deb
+        id: deb
+        run: |
+          DEB=$(find packages -name "*.deb" | sort | tail -1)
+          echo "path=$DEB" >> "$GITHUB_OUTPUT"
+          echo "Built: $DEB"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApolloReborn-GalleryMode
+          path: ${{ steps.deb.outputs.path }}
+          retention-days: 30
