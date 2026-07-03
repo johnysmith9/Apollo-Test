@@ -1,0 +1,81 @@
+# .github/workflows/build-ipa.yml
+#
+# Matches Apollo-Reborn's existing "Build IPA" Action pattern.
+# Builds the tweak .deb via Theos, then injects it into a stock Apollo IPA
+# using the repo's own build-ipa.sh script.
+#
+# Output: a ready-to-sideload Apollo .ipa with the Gallery Mode tweak baked in.
+#
+# HOW TO USE:
+#   Actions → "Build IPA (Gallery Mode)" → Run workflow
+#   Fill in the apollo_ipa_url input (a direct download link to a stock Apollo IPA)
+#   Download the artifact when done, sideload with AltStore / SideStore / Feather
+
+name: Build IPA (Gallery Mode)
+
+on:
+  workflow_dispatch:
+    inputs:
+      apollo_ipa_url:
+        description: "Direct URL to a stock Apollo IPA (unsigned)"
+        required: true
+        type: string
+      liquid_glass:
+        description: "Apply Liquid Glass UI patch (iOS 26)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/theos/theos-docker:latest
+      options: --user root
+
+    steps:
+      - name: Checkout (with LFS for liquid-glass Assets.car)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+
+      - name: Fetch LFS objects
+        run: git lfs pull
+
+      # -----------------------------------------------------------------------
+      - name: Build tweak .deb
+        run: |
+          make package \
+            THEOS_PACKAGE_SCHEME=rootless \
+            FINALPACKAGE=1 \
+            -j$(nproc)
+
+      - name: Locate built .deb
+        id: deb
+        run: |
+          DEB=$(find packages -name "*.deb" | sort | tail -1)
+          echo "path=$DEB" >> "$GITHUB_OUTPUT"
+          echo "Built deb: $DEB"
+
+      # -----------------------------------------------------------------------
+      - name: Download stock Apollo IPA
+        run: |
+          curl -L "${{ inputs.apollo_ipa_url }}" -o Apollo-stock.ipa
+
+      # -----------------------------------------------------------------------
+      - name: Inject tweak + optional patches
+        run: |
+          ARGS="--ipa Apollo-stock.ipa --deb ${{ steps.deb.outputs.path }} -o Apollo-Gallery.ipa"
+          if [ "${{ inputs.liquid_glass }}" = "true" ]; then
+            ARGS="$ARGS --liquid-glass"
+          fi
+          bash build-ipa.sh $ARGS
+
+      # -----------------------------------------------------------------------
+      - name: Upload tweaked IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Apollo-GalleryMode
+          path: Apollo-Gallery.ipa
+          retention-days: 30
