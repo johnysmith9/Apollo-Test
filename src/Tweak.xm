@@ -1455,6 +1455,7 @@ static void initializeRandomSources() {
                                     UDKeyModernSubredditDividers: @YES,
                                     UDKeyShowDeletedComments: @NO,
                                     UDKeyTapToRevealDeletedComments: @NO,
+                                    UDKeyPassiveDeletedComments: @NO,
                                     UDKeyEnableFlairColors: @NO,
                                     UDKeyShowRecentlyReadThumbnails: @YES,
                                     UDKeyFeedTextPostThumbnails: @YES,
@@ -1533,6 +1534,14 @@ static void initializeRandomSources() {
     sBlockAnnouncements = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyBlockAnnouncements];
     sShowDeletedComments = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyShowDeletedComments];
     sTapToRevealDeletedComments = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyTapToRevealDeletedComments];
+    sPassiveDeletedComments = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyPassiveDeletedComments];
+    // Always Show and Passive are one-or-the-other (the settings screen
+    // enforces it on toggle); normalize any stale both-on state — Always
+    // Show wins, matching the comments-menu logic.
+    if (sShowDeletedComments && sPassiveDeletedComments) {
+        sPassiveDeletedComments = NO;
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:UDKeyPassiveDeletedComments];
+    }
     sShowRecentlyReadThumbnails = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyShowRecentlyReadThumbnails];
     sFeedTextPostThumbnails = [[NSUserDefaults standardUserDefaults] boolForKey:UDKeyFeedTextPostThumbnails];
     sPreferredGIFFallbackFormat = ([[NSUserDefaults standardUserDefaults] integerForKey:UDKeyPreferredGIFFallbackFormat] == 0) ? 0 : 1;
@@ -1876,6 +1885,17 @@ static void initializeRandomSources() {
         NSArray<NSString *> *webSessionUsers = ApolloWebSessionUsernames().allObjects;
         ApolloLog(@"[WebJSON] enabled at launch, %lu web-session account(s): %@",
                   (unsigned long)webSessionUsers.count, webSessionUsers);
+        // Poison repair + bearer attribution, both before AccountManager loads
+        // the account blobs. Repair MUST run first: on a poisoned blob the
+        // victim index still carries the web-session username, so seeding
+        // first would register the victim's REAL token under that username —
+        // and the chokepoint would then cookie-rewrite the victim's post-
+        // repair identity refresh as the wrong user, re-poisoning the account
+        // the moment it's selected. Repair clears the victim's currentUser, so
+        // the seed skips it and its requests stay on the oauth path.
+        @try { ApolloWebJSONRepairPoisonedAccountBlobs(); }
+        @catch (NSException *e) { ApolloLog(@"[WebJSON][repair] launch repair threw: %@", e); }
+        ApolloWebJSONSeedBearerRegistryFromDisk();
     }
 
     // Cold-start identity: synthesize a signed-in account for every stored
